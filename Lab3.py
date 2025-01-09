@@ -40,6 +40,18 @@ class Account:
     def get_trans(self):
         return self.__transection
     
+    def deposit_amount(self, amount):
+        self.__amount += amount
+
+    def withdraw_amount(self, amount):
+        self.__amount -= amount
+
+    def tw_amount(self, amount):
+        self.__amount -= amount
+    
+    def td_amount(self, amount):
+        self.__amount += amount
+    
     def __str__(self):
         return f'Account : {self.__account_number} {self.__owner} {self.__amount} /'
 
@@ -83,7 +95,7 @@ class ATMMachine:
         
         if isinstance(account , Account):
             after_amount = account.balance
-            account.balance += amount
+            account.deposit_amount(amount)
             self.__initial_amount += amount
             trans = Transection('D', amount , self.__machine_id ,after_amount )
             account.add_transection(trans)
@@ -96,7 +108,7 @@ class ATMMachine:
         
         if isinstance(account , Account) and self.__initial_amount >= amount and account.balance > amount:
             after_amount = account.balance
-            account.balance -= amount
+            account.withdraw_amount(amount)
             self.__initial_amount -= amount
             trans = Transection('W', amount , self.__machine_id , after_amount)
             account.add_transection(trans)
@@ -108,8 +120,8 @@ class ATMMachine:
             if account.balance > amount  and amount > 0:
                 after_amount = account.balance
                 after_amount2 = account2.balance
-                account.balance -= amount
-                account2.balance += amount
+                account.tw_amount(amount)
+                account2.td_amount(amount)
                 trans = Transection('TW', amount , self.__machine_id , after_amount)
                 account.add_transection(trans)
                 trans = Transection('TD', amount , self.__machine_id , after_amount2)
@@ -138,6 +150,9 @@ class Bank:
         for i in self.__atm_lst:
             if machine_id == i.get_machine_id():
                 return i
+            
+    def __str__(self):
+        return f'{self.__name} {[i.get_name() for i in self.__user_lst]} {[i.get_machine_id() for i in self.__atm_lst]}'
 
 class Transection:
     def __init__(self, Type : str , amount : int , id_atm : str , after_amount : int):
@@ -156,7 +171,7 @@ class Transection:
         return self.__after_amount
     
     def __str__(self):
-        return f'Transection : {self.__type}-ATM:{self.__id_atm}-{self.__amount}-{self.__after_amount}'
+        return f'{self.__type}-ATM:{self.__id_atm}-{self.__amount}-{self.__after_amount}'
 ##################################################################################
 # กำหนดรูปแบบของ user ดังนี้ {รหัสประชาชน : [ชื่อ, หมายเลขบัญชี, จำนวนเงิน, หมายเลข ATM ]}
 user ={'1-1101-12345-05-0':['Harry Potter','1234567890',20000,'12345'],
@@ -192,14 +207,15 @@ def init_machine():
 
 init_usr()
 init_machine()
-kmitlBank = Bank('KMITL BANK', lst_usr , lst_machine)
-
+bank = Bank('KMITL BANK', lst_usr , lst_machine)
+print()
+print(bank)
 # TODO 2 : เขียน method ที่ทำหน้าที่สอดบัตรเข้าเครื่อง ATM มี parameter 2 ตัว ได้แก่ 1) instance ของธนาคาร
 # TODO     2) atm_card เป็นหมายเลขของ atm_card
 # TODO     return ถ้าบัตรถูกต้องจะได้ instance ของ account คืนมา ถ้าไม่ถูกต้องได้เป็น None
 # TODO     ควรเป็น method ของเครื่อง ATM
 
-# inst = lst_machine[0].insert_card(kmitlBank,'12345')
+# inst = lst_machine[0].insert_card(bank,'12345')
 # print(inst)
 
 # TODO 3 : เขียน method ที่ทำหน้าที่ฝากเงิน โดยรับ parameter 3 ตัว คือ 1) instance ของเครื่อง atm
@@ -254,8 +270,8 @@ kmitlBank = Bank('KMITL BANK', lst_usr , lst_machine)
 
 # TEST 
 
-atm1 = kmitlBank.get_atm('1001')
-atm2 = kmitlBank.get_atm('1002')
+atm1 = bank.get_atm('1001')
+atm2 = bank.get_atm('1002')
 harry_card = lst_card[0].get_card_number() #12345
 hermione_card  = lst_card[1].get_card_number() #12346
 
@@ -263,7 +279,7 @@ hermione_card  = lst_card[1].get_card_number() #12346
 # และเรียกใช้ function หรือ method จากเครื่อง ATM
 # ผลที่คาดหวัง : พิมพ์ หมายเลข account ของ harry อย่างถูกต้อง และ พิมพ์หมายเลขบัตร ATM อย่างถูกต้อง
 # Ans : 12345, 1234567890, Success
-harry_acc = atm1.insert_card(harry_card , '1234')
+harry_acc = atm1.insert_card(harry_card , '1234') #return acc
 print(f"Ans : {harry_card}, {harry_acc.get_acc_number()}, {'Success' if harry_acc != None else 'Error' }")
 print("-------------------------")
 
@@ -329,7 +345,7 @@ print("-------------------------")
 
 # Test case #8 : ทดสอบการใส่ PIN ไม่ถูกต้อง 
 # ให้เรียกใช้ method ที่ทำการ insert card และตรวจสอบ PIN
-atm_machine = kmitlBank.get_atm('1001')
+atm_machine = bank.get_atm('1001')
 test_result = atm_machine.insert_card('12345', '9999')  # ใส่ PIN ผิด
 # ผลที่คาดหวัง
 # Invalid PIN
@@ -337,7 +353,7 @@ print(test_result)
 print("-------------------------")
 
 # Test case #9 : ทดสอบการถอนเงินเกินวงเงินต่อวัน (40,000 บาท)
-atm_machine = kmitlBank.get_atm('1001')
+atm_machine = bank.get_atm('1001')
 account = atm_machine.insert_card('12345', '1234')  # PIN ถูกต้อง
 harry_balance_before = account.get_balance()
 print(f"Harry account before test: {harry_balance_before}")
@@ -349,7 +365,7 @@ print(f"Harry account after test: {account.get_balance()}")
 print("-------------------------")
 
 # Test case #10 : ทดสอบการถอนเงินเมื่อเงินในตู้ ATM ไม่พอ
-atm_machine = kmitlBank.get_atm('1002')  # สมมติว่าตู้ที่ 2 มีเงินเหลือ 200,000 บาท
+atm_machine = bank.get_atm('1002')  # สมมติว่าตู้ที่ 2 มีเงินเหลือ 200,000 บาท
 account = atm_machine.insert_card('12345', '1234')
 print("Test case #10 : Test withdrawal when ATM has insufficient funds")
 print(f"ATM machine balance before: {atm_machine.get_balance()}")
